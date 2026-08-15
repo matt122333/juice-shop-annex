@@ -1,0 +1,8 @@
+node_modules/
+*.log
+.DS_Store
+
+# The answer key + validation tooling. Never commit to a shared/public remote,
+# and delete this folder from any copy given to a model for white-box testing.
+# (Shipped in this working copy on purpose; keep it local.)
+answer-key/

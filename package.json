@@ -1,0 +1,14 @@
+{
+  "name": "juice-shop-annex",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Injects 15 additional high/critical vulnerabilities, dispersed across ordinary-looking route modules, into an OWASP Juice Shop source clone for benchmarking model-based vulnerability detection and remediation. Isolated local security-research labs only.",
+  "license": "MIT",
+  "scripts": {
+    "install-annex": "node install-annex.js",
+    "uninstall-annex": "node uninstall-annex.js",
+    "test-exploits": "node exploit-tests.js"
+  },
+  "keywords": ["owasp", "juice-shop", "security", "vulnerability", "benchmark", "appsec", "lab"],
+  "engines": { "node": ">=22 <=26" }
+}
