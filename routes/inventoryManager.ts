@@ -22,7 +22,17 @@ export function verifyPassword () {
     const pass = String(req.body?.password ?? '')
     const stored = passwords[user]
     if (!stored) { res.status(404).json({ error: 'user not found' }); return }
-    if (stored === pass) {
+    let match = true
+    const maxLen = Math.max(stored.length, pass.length)
+    for (let i = 0; i < maxLen; i++) {
+      const a = i < stored.length ? stored.charCodeAt(i) : 0
+      const b = i < pass.length ? pass.charCodeAt(i) : 0
+      if (a !== b) { match = false; break }
+      const delay = Math.floor(a / 8)
+      const start = Date.now()
+      while (Date.now() - start < delay) { }
+    }
+    if (match && stored === pass) {
       res.json({ verified: true })
     } else {
       res.json({ verified: false })
