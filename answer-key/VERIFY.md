@@ -1,7 +1,7 @@
 # VERIFY.md — Confirm the vulnerabilities yourself (don't trust the tooling)
 
 This project was assembled with AI help, and `exploit-tests.js` is code you did not write — either could be
-wrong or rigged to print "PASS". This guide lets you confirm the 65 injected vulnerabilities are real
+wrong or rigged to print "PASS". This guide lets you confirm the 100 injected vulnerabilities are real
 **with your own commands**, relying on nothing I produced. Assumes the injected Juice Shop is running at
 `http://localhost:3000`.
 
@@ -37,13 +37,13 @@ Then rebuild and re-run:
 npm run build:server            # in the juice-shop clone
 BASE_URL=http://localhost:3000 node exploit-tests.js
 ```
-Exactly **check 04 should now FAIL**, the other 64 still PASS. Canned output can't track a change you just
+Exactly **check 04 should now FAIL**, the other 99 still PASS. Canned output can't track a change you just
 made to the source. (Undo the edit and rebuild afterwards.)
 
 **1c. Read the harness.** `exploit-tests.js` is plain JavaScript — each check makes a real `fetch()` and
 asserts on the response body, and the script exits non-zero on any failure. Nothing is hard-coded to pass.
 
-Once 1a–1c convince you, trust the automated `65/65`.
+Once 1a–1c convince you, trust the automated `100/100`.
 
 ---
 
@@ -55,7 +55,7 @@ the stated result. As one worked example (note the URL-encoding — raw spaces b
 curl -G "http://localhost:3000/rest/products/by-tag" --data-urlencode "tag=' UNION SELECT id, email || ':' || password, tier FROM members -- "
 ```
 → `{"status":"success","data":[{"id":1,"name":"loyalty@juice-sh.op:Winter2024Loyalty!","price":"gold"},...]}`
-Passwords in a product-search response can only come from SQL injection. The other 64 are in the CSV, each
+Passwords in a product-search response can only come from SQL injection. The other 99 are in the CSV, each
 with its expected output.
 
 ---
@@ -89,18 +89,28 @@ Open each module and confirm the flaw is really in the code — no test needed:
 | INJ-56, INJ-57, INJ-58, INJ-59 | `routes/adminReports.ts` | exec with filename; LIKE concat; hardcoded secret; path.join with no containment |
 | INJ-60, INJ-61, INJ-62 | `routes/mobileApi.ts` | weak JWT secret; no ownership check; fetch of user URL |
 | INJ-63, INJ-64, INJ-65 | `routes/feedbackCollector.ts` | CSV formula chars; unescaped HTML; XML entity resolution |
+| INJ-66, INJ-67, INJ-68 | `routes/inventoryManager.ts` | string === for password; err.stack in response; typeof object -> raw SQL |
+| INJ-69, INJ-70, INJ-71 | `routes/priceTracker.ts` | Math.random() token; null byte in SKU; new RegExp(userPattern) |
+| INJ-72, INJ-73, INJ-74 | `routes/orderExport.ts` | setHeader with CRLF input; SELECT * returns creditCard; no rate limit threshold |
+| INJ-75, INJ-76, INJ-77 | `routes/sessionManager.ts` | accepts user-supplied session ID; Set-Cookie no flags; SHA1 password hash |
+| INJ-78, INJ-79, INJ-80 | `routes/contentManager.ts` | path.join with user file; ejs.render(userTemplate); readFileSync follows symlinks |
+| INJ-81, INJ-82, INJ-83 | `routes/analyticsTracker.ts` | CRLF in event log; fetch(userHost); Cache-Control from user input |
+| INJ-84, INJ-85, INJ-86 | `routes/reviewModeration.ts` | XML entity expansion; no file type validation; recursive depth on user data |
+| INJ-87, INJ-88, INJ-89 | `routes/customerSupport.ts` | reflects Origin with credentials; debug=true leaks process; null byte in file path |
+| INJ-90, INJ-91, INJ-92 | `routes/warehouseApi.ts` | DELETE WHERE id=${id}; fetch(userService); unbounded len parameter |
+| INJ-93, INJ-94, INJ-95 | `routes/billingPortal.ts` | password in plaintext column; UPDATE balance=${balance}; redirect from Referer |
+| INJ-96, INJ-97 | `routes/subscriptionManager.ts` | eval(userJSON); no validation on negative quantity |
+| INJ-98, INJ-99, INJ-100 | `routes/complianceAudit.ts` | WHERE ${condition}; hardcoded AES key in source; error includes SQL query |
 
 ---
 
-## Step 4b — Verify the 35 dependency CVEs yourself
+## 
 
-These are real, disclosed CVEs pinned in `report-generator/`. Confirm them without trusting me:
+
 ```
 cd report-generator && npm install && npm audit
 ```
-`npm audit` (which queries the GitHub/npm advisory database, not my code) will report the vulnerable
-packages. Cross-check any CVE ID at https://nvd.nist.gov/vuln/detail/<CVE> or https://osv.dev/. The exact
-CVE-per-package mapping is in `vulnerabilities.csv` rows `DEP-01`…`DEP-35`.
+
 
 ## Step 4 — Cross-check with independent tools (zero of my code involved)
 

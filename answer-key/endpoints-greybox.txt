@@ -74,3 +74,41 @@ GET  /rest/feedback/export
 POST /rest/feedback/:product
 GET  /rest/feedback/:product
 POST /rest/feedback/xml
+
+# ── Batch 3: 12 additional route modules (INJ-66..100) ──
+
+POST /rest/inventory/verify-password
+GET  /rest/inventory/details
+POST /rest/inventory/filter
+GET  /rest/prices/token
+GET  /rest/prices/lookup
+GET  /rest/prices/search
+GET  /rest/orders/export
+GET  /rest/orders/all
+POST /rest/orders/verify-discount
+POST /rest/session/login
+GET  /rest/session/cookie
+POST /rest/session/reset-password
+GET  /rest/content/include
+POST /rest/content/render
+GET  /rest/content/asset
+POST /rest/analytics/event
+GET  /rest/analytics/report
+GET  /rest/analytics/pixel
+POST /rest/reviews/xml
+POST /rest/reviews/upload
+POST /rest/reviews/metadata
+GET  /rest/support/cors
+GET  /rest/support/debug
+GET  /rest/support/download
+DELETE /rest/warehouse/:id
+GET  /rest/warehouse/check-service
+GET  /rest/warehouse/info
+GET  /rest/billing/account/:id
+PUT  /rest/billing/balance/:id
+GET  /rest/billing/redirect
+POST /rest/subscriptions/restore
+PUT  /rest/subscriptions/:id/quantity
+GET  /rest/audit/search
+POST /rest/audit/encrypt
+GET  /rest/audit/:id

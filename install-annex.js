@@ -21,7 +21,10 @@ const MODULES = [
   'productCatalog', 'deliveryTracking', 'accountManagement', 'adminDiagnostics', 'dataImport', 'integrations',
   'promotions', 'couponManager', 'giftCards', 'wishlist', 'shippingCalculator', 'returnProcessor',
   'affiliateTracker', 'vendorPortal', 'taxCalculator', 'loyaltyPoints', 'searchIndex', 'cartDiscounts',
-  'notificationsApi', 'adminReports', 'mobileApi', 'feedbackCollector'
+  'notificationsApi', 'adminReports', 'mobileApi', 'feedbackCollector',
+  'inventoryManager', 'priceTracker', 'orderExport', 'sessionManager', 'contentManager',
+  'analyticsTracker', 'reviewModeration', 'customerSupport', 'warehouseApi',
+  'billingPortal', 'subscriptionManager', 'complianceAudit'
 ];
 const IMPORTS = MODULES.map(m => `import * as ${m} from './routes/${m}'`);
 const MOUNTS = [
@@ -95,19 +98,48 @@ const MOUNTS = [
   "  app.get('/rest/feedback/export', feedbackCollector.exportCsv())",
   "  app.post('/rest/feedback/xml', feedbackCollector.parseXmlFeedback())",
   "  app.post('/rest/feedback/:product', feedbackCollector.submitFeedback())",
-  "  app.get('/rest/feedback/:product', feedbackCollector.viewFeedback())"
+  "  app.get('/rest/feedback/:product', feedbackCollector.viewFeedback())",
+  "  app.post('/rest/inventory/verify-password', inventoryManager.verifyPassword())",
+  "  app.get('/rest/inventory/details', inventoryManager.inventoryDetails())",
+  "  app.post('/rest/inventory/filter', inventoryManager.filterInventory())",
+  "  app.get('/rest/prices/token', priceTracker.generateToken())",
+  "  app.get('/rest/prices/lookup', priceTracker.lookupPrice())",
+  "  app.get('/rest/prices/search', priceTracker.searchPrices())",
+  "  app.get('/rest/orders/export', orderExport.exportOrders())",
+  "  app.get('/rest/orders/all', orderExport.getAllOrders())",
+  "  app.post('/rest/orders/verify-discount', orderExport.verifyDiscount())",
+  "  app.post('/rest/session/login', sessionManager.login())",
+  "  app.get('/rest/session/cookie', sessionManager.setSessionCookie())",
+  "  app.post('/rest/session/reset-password', sessionManager.resetPassword())",
+  "  app.get('/rest/content/include', contentManager.includeTemplate())",
+  "  app.post('/rest/content/render', contentManager.renderContent())",
+  "  app.get('/rest/content/asset', contentManager.readAsset())",
+  "  app.post('/rest/analytics/event', analyticsTracker.recordEvent())",
+  "  app.get('/rest/analytics/report', analyticsTracker.fetchReport())",
+  "  app.get('/rest/analytics/pixel', analyticsTracker.trackingPixel())",
+  "  app.post('/rest/reviews/xml', reviewModeration.parseXmlReview())",
+  "  app.post('/rest/reviews/upload', reviewModeration.uploadAttachment())",
+  "  app.post('/rest/reviews/metadata', reviewModeration.processMetadata())",
+  "  app.get('/rest/support/cors', customerSupport.corsPreflight())",
+  "  app.get('/rest/support/debug', customerSupport.getDebugInfo())",
+  "  app.get('/rest/support/download', customerSupport.downloadAttachment())",
+  "  app.delete('/rest/warehouse/:id', warehouseApi.deleteWarehouse())",
+  "  app.get('/rest/warehouse/check-service', warehouseApi.checkService())",
+  "  app.get('/rest/warehouse/info', warehouseApi.getWarehouseInfo())",
+  "  app.get('/rest/billing/account/:id', billingPortal.getAccount())",
+  "  app.put('/rest/billing/balance/:id', billingPortal.updateBalance())",
+  "  app.get('/rest/billing/redirect', billingPortal.paymentRedirect())",
+  "  app.post('/rest/subscriptions/restore', subscriptionManager.restoreBackup())",
+  "  app.put('/rest/subscriptions/:id/quantity', subscriptionManager.updateQuantity())",
+  "  app.get('/rest/audit/search', complianceAudit.searchAuditLogs())",
+  "  app.post('/rest/audit/encrypt', complianceAudit.encryptRecord())",
+  "  app.get('/rest/audit/:id', complianceAudit.getAuditLog())"
 ];
 
 // 1. Copy the modules into the repo
 for (const m of MODULES) fs.copyFileSync(path.join(__dirname, 'routes', `${m}.ts`), path.join(routesDir, `${m}.ts`));
 console.log(`✓ ${MODULES.length} route modules written to routes/`);
 
-// 1b. Copy the known-vulnerable dependency manifest (CVE / SCA target; not imported, cannot break runtime)
-const vcSrc = path.join(__dirname, 'report-generator');
-if (fs.existsSync(vcSrc)) {
-  fs.cpSync(vcSrc, path.join(dir, 'report-generator'), { recursive: true });
-  console.log('✓ report-generator/ written (35 known-vulnerable deps for SCA/CVE detection)');
-}
 
 // 2. Wire them into server.ts (idempotent)
 let src = fs.readFileSync(serverPath, 'utf8');
@@ -136,6 +168,8 @@ if (changed) fs.writeFileSync(serverPath, src);
 console.log('\nInstalling better-sqlite3...');
 execSync('npm install better-sqlite3 --ignore-scripts', { cwd: dir, stdio: 'inherit' });
 execSync('npm rebuild better-sqlite3', { cwd: dir, stdio: 'inherit' });
+console.log('\nInstalling ejs...');
+execSync('npm install ejs', { cwd: dir, stdio: 'inherit' });
 console.log('\nRecompiling server...');
 execSync('npm run build:server', { cwd: dir, stdio: 'inherit' });
 
