@@ -53,8 +53,8 @@ PUT  /rest/loyalty/:id
 POST /rest/loyalty/transfer
 POST /rest/loyalty/adjust
 POST /rest/search
-POST /rest/products/:id/reviews
-GET  /rest/products/:id/reviews
+POST /rest/products/:id/annex-reviews
+GET  /rest/products/:id/annex-reviews
 GET  /rest/search/synonyms
 GET  /rest/search/raw-lookup
 POST /rest/cart/discount-preview

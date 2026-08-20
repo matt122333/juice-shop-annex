@@ -75,8 +75,8 @@ const MOUNTS = [
   "  app.post('/rest/loyalty/transfer', loyaltyPoints.transferPoints())",
   "  app.post('/rest/loyalty/adjust', loyaltyPoints.addAdjustment())",
   "  app.post('/rest/search', searchIndex.searchIndex())",
-  "  app.post('/rest/products/:id/reviews', searchIndex.postReview())",
-  "  app.get('/rest/products/:id/reviews', searchIndex.viewReviews())",
+  "  app.post('/rest/products/:id/annex-reviews', searchIndex.postReview())",
+  "  app.get('/rest/products/:id/annex-reviews', searchIndex.viewReviews())",
   "  app.get('/rest/search/synonyms', searchIndex.loadSynonyms())",
   "  app.get('/rest/search/raw-lookup', searchIndex.rawLookup())",
   "  app.post('/rest/cart/discount-preview', cartDiscounts.previewDiscount())",
@@ -93,9 +93,9 @@ const MOUNTS = [
   "  app.get('/rest/mobile/profile/:id', mobileApi.getProfile())",
   "  app.get('/rest/mobile/image', mobileApi.proxyImage())",
   "  app.get('/rest/feedback/export', feedbackCollector.exportCsv())",
+  "  app.post('/rest/feedback/xml', feedbackCollector.parseXmlFeedback())",
   "  app.post('/rest/feedback/:product', feedbackCollector.submitFeedback())",
-  "  app.get('/rest/feedback/:product', feedbackCollector.viewFeedback())",
-  "  app.post('/rest/feedback/xml', feedbackCollector.parseXmlFeedback())"
+  "  app.get('/rest/feedback/:product', feedbackCollector.viewFeedback())"
 ];
 
 // 1. Copy the modules into the repo
