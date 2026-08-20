@@ -11,7 +11,12 @@ const dir = process.argv[2];
 if (!dir) { console.error('Usage: node uninstall-annex.js /path/to/juice-shop'); process.exit(1); }
 const serverPath = path.join(dir, 'server.ts');
 
-const MODULES = ['productCatalog', 'deliveryTracking', 'accountManagement', 'adminDiagnostics', 'dataImport', 'integrations'];
+const MODULES = [
+  'productCatalog', 'deliveryTracking', 'accountManagement', 'adminDiagnostics', 'dataImport', 'integrations',
+  'promotions', 'couponManager', 'giftCards', 'wishlist', 'shippingCalculator', 'returnProcessor',
+  'affiliateTracker', 'vendorPortal', 'taxCalculator', 'loyaltyPoints', 'searchIndex', 'cartDiscounts',
+  'notificationsApi', 'adminReports', 'mobileApi', 'feedbackCollector'
+];
 const IMPORTS = MODULES.map(m => `import * as ${m} from './routes/${m}'`);
 const MOUNTS = [
   "  app.get('/rest/products/by-tag', productCatalog.productsByTag())",
@@ -31,7 +36,60 @@ const MOUNTS = [
   "  app.post('/rest/user/preferences/restore', dataImport.restorePreferences())",
   "  app.post('/rest/products/import-feed', dataImport.importProductFeed())",
   "  app.post('/rest/partner/verify-token', integrations.verifyPartnerToken())",
-  "  app.post('/rest/notifications/preview', integrations.previewNotification())"
+  "  app.post('/rest/notifications/preview', integrations.previewNotification())",
+  "  app.get('/rest/promos/search', promotions.searchPromos())",
+  "  app.get('/rest/promos/landing/:code', promotions.promoLanding())",
+  "  app.post('/rest/promos/apply', promotions.applyPromo())",
+  "  app.post('/rest/coupons/lookup', couponManager.lookupCoupon())",
+  "  app.get('/rest/coupons/:id', couponManager.getCoupon())",
+  "  app.post('/rest/coupons/validate', couponManager.validateCoupon())",
+  "  app.post('/rest/gift-cards/redeem', giftCards.redeemGiftCard())",
+  "  app.post('/rest/gift-cards/:id/messages', giftCards.postGiftMessage())",
+  "  app.get('/rest/gift-cards/:id/messages', giftCards.viewGiftMessage())",
+  "  app.post('/rest/gift-cards/configure', giftCards.configureGiftCard())",
+  "  app.get('/rest/wishlists/search', wishlist.searchWishlists())",
+  "  app.get('/rest/wishlists/:id', wishlist.getWishlist())",
+  "  app.put('/rest/wishlists/:id/shipping', wishlist.updateShipping())",
+  "  app.get('/rest/shipping/rate', shippingCalculator.getRate())",
+  "  app.post('/rest/shipping/calculate', shippingCalculator.calculateShipping())",
+  "  app.get('/rest/shipping/zones', shippingCalculator.loadZone())",
+  "  app.get('/rest/returns/policy', returnProcessor.fetchPolicy())",
+  "  app.get('/rest/returns/search', returnProcessor.searchReturns())",
+  "  app.get('/rest/returns/confirm/:orderId', returnProcessor.returnConfirmation())",
+  "  app.get('/rest/affiliate/click', affiliateTracker.recordClick())",
+  "  app.get('/rest/affiliate/stats', affiliateTracker.affiliateStats())",
+  "  app.get('/rest/affiliate/leaderboard', affiliateTracker.leaderboard())",
+  "  app.post('/rest/vendor/login', vendorPortal.vendorLogin())",
+  "  app.post('/rest/vendor/soap-update', vendorPortal.processSoapUpdate())",
+  "  app.get('/rest/vendor/invoice', vendorPortal.fetchInvoice())",
+  "  app.post('/rest/tax/calculate', taxCalculator.calculateTax())",
+  "  app.get('/rest/tax/lookup', taxCalculator.lookupTaxRate())",
+  "  app.get('/rest/tax-rates/search', taxCalculator.searchTaxRates())",
+  "  app.put('/rest/loyalty/:id', loyaltyPoints.updateAccount())",
+  "  app.post('/rest/loyalty/transfer', loyaltyPoints.transferPoints())",
+  "  app.post('/rest/loyalty/adjust', loyaltyPoints.addAdjustment())",
+  "  app.post('/rest/search', searchIndex.searchIndex())",
+  "  app.post('/rest/products/:id/reviews', searchIndex.postReview())",
+  "  app.get('/rest/products/:id/reviews', searchIndex.viewReviews())",
+  "  app.get('/rest/search/synonyms', searchIndex.loadSynonyms())",
+  "  app.get('/rest/search/raw-lookup', searchIndex.rawLookup())",
+  "  app.post('/rest/cart/discount-preview', cartDiscounts.previewDiscount())",
+  "  app.post('/rest/cart/best-discount', cartDiscounts.applyBestDiscount())",
+  "  app.get('/rest/cart/rules/search', cartDiscounts.searchRules())",
+  "  app.post('/rest/notifications/send', notificationsApi.sendNotification())",
+  "  app.get('/rest/notifications/:id', notificationsApi.getNotification())",
+  "  app.post('/rest/notifications/graphql', notificationsApi.graphqlQuery())",
+  "  app.get('/rest/admin/reports/generate', adminReports.generateReport())",
+  "  app.get('/rest/admin/reports/search', adminReports.searchReports())",
+  "  app.get('/rest/admin/reports/verify', adminReports.verifyAdminKey())",
+  "  app.get('/rest/admin/reports/download', adminReports.downloadReport())",
+  "  app.post('/rest/mobile/session', mobileApi.verifySession())",
+  "  app.get('/rest/mobile/profile/:id', mobileApi.getProfile())",
+  "  app.get('/rest/mobile/image', mobileApi.proxyImage())",
+  "  app.get('/rest/feedback/export', feedbackCollector.exportCsv())",
+  "  app.post('/rest/feedback/:product', feedbackCollector.submitFeedback())",
+  "  app.get('/rest/feedback/:product', feedbackCollector.viewFeedback())",
+  "  app.post('/rest/feedback/xml', feedbackCollector.parseXmlFeedback())"
 ];
 
 for (const m of MODULES) {
