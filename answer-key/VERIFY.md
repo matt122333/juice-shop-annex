@@ -52,11 +52,16 @@ Once 1a–1c convince you, trust the automated `100/100`.
 Run the command in the `Manual_Reproduction` column of `vulnerabilities.csv` for any row and check you get
 the stated result. As one worked example (note the URL-encoding — raw spaces break curl):
 ```
-curl -G "http://localhost:3000/rest/products/by-tag" --data-urlencode "tag=' UNION SELECT id, email || ':' || password, tier FROM members -- "
+curl -G "http://localhost:3000/rest/products/by-tag" --data-urlencode "tag=' UNION SELECT id, email || ':' || password, tier, 4, 5, 6 FROM members -- "
 ```
-→ `{"status":"success","data":[{"id":1,"name":"loyalty@juice-sh.op:Winter2024Loyalty!","price":"gold"},...]}`
+→ `{"status":"success","data":[{"id":1,"name":"loyalty@juice-sh.op:Winter2024Loyalty!","price":"gold","tag":4,"brand":5,"stock":6},...]}`
 Passwords in a product-search response can only come from SQL injection. The other 99 are in the CSV, each
 with its expected output.
+
+**25 of the 100 are "buried" in realistic code** (INJ-01..25). The `Scorer_Notes` column marks each with
+`BURIED` and lists the module name, line count, surrounding functions, and what makes detection harder.
+These are the same vulns, just embedded in larger modules with business logic noise — the reproduction
+commands and expected outputs are the same.
 
 ---
 
@@ -64,53 +69,78 @@ with its expected output.
 
 Open each module and confirm the flaw is really in the code — no test needed:
 
+### Buried vulns (INJ-01..25) — harder to spot, surrounded by business logic
+
+| CSV IDs | File | Lines | Look for |
+|---------|------|-------|----------|
+| INJ-01, INJ-13 | `routes/productCatalog.ts` | 155 | user input in SQL (`WHERE tag = '${tag}'`, `ORDER BY ${sortBy}`) — buried among pagination, tier pricing, product formatting, logging |
+| INJ-10 | `routes/productCatalog.ts` | 155 | question text in HTML unescaped — buried among question validation, verified filtering, bulk lookup |
+| INJ-02, INJ-05, INJ-11 | `routes/deliveryTracking.ts` | 103 | `fetch(url)` on user URL; `path.join(dir, file)`; `res.redirect(url)` — buried among URL validation, carrier lookup, tracking history |
+| INJ-07, INJ-12, INJ-14 | `routes/accountManagement.ts` | 112 | note lookup no owner check; `Object.assign(profile, req.body)`; reset code from `Date.now()` — buried among audit logging, sanitization, numeric validation |
+| INJ-04, INJ-15 | `routes/adminDiagnostics.ts` | ~35 | `exec(\`echo checking ${host}\`)`; `/user-stats` no auth — buried among error handling |
+| INJ-03, INJ-08 | `routes/dataImport.ts` | ~60 | `eval(...)` on request data; XML entity resolution `file://` — buried among import formatting |
+| INJ-06, INJ-09 | `routes/integrations.ts` | ~50 | `new Function(...)` on template; `if (header.alg === 'none')` + hardcoded secret — buried among notification rendering |
+| INJ-16, INJ-17, INJ-18 | `routes/promotions.ts` | 88 | SQL LIKE concat; unescaped HTML; non-atomic check-then-decrement — buried among date validation, view logging, analytics |
+| INJ-19, INJ-20, INJ-21 | `routes/couponManager.ts` | 100 | SQL string concat; no ownership check; user-supplied regex — buried among attempt logging, category filtering, response formatting |
+| INJ-22, INJ-23, INJ-24 | `routes/giftCards.ts` | 94 | Number overflow; unescaped HTML; `Object.assign` of untrusted input — buried among code validation, redemption logging, history |
+| INJ-25 | `routes/wishlist.ts` | 92 | WHERE clause concat — buried among item parsing, shipping config, numeric validation |
+
+### Standalone vulns (INJ-26..100) — easier to spot, isolated in small modules
+
 | CSV IDs | File | Look for |
 |---------|------|----------|
-| INJ-01, INJ-13 | `routes/productCatalog.ts` | user input concatenated into SQL (`WHERE tag = '${tag}'`, `ORDER BY ${sortBy}`) |
-| INJ-10 | `routes/productCatalog.ts` | question text put into HTML with no escaping |
-| INJ-02, INJ-05, INJ-11 | `routes/deliveryTracking.ts` | `fetch(url)` on a user URL; `path.join(dir, file)` with no containment; `res.redirect(to)` |
-| INJ-07, INJ-12, INJ-14 | `routes/accountManagement.ts` | note lookup with no owner check; `Object.assign(profile, req.body)`; reset code from `Date.now()`+`Math.random()` |
-| INJ-04, INJ-15 | `routes/adminDiagnostics.ts` | `exec(\`echo checking ${host}\`)`; `/user-stats` handler with no auth middleware |
-| INJ-03, INJ-08 | `routes/dataImport.ts` | `eval(...)` on request data; XML entity resolution reading `file://` |
-| INJ-06, INJ-09 | `routes/integrations.ts` | `new Function(...)` on template input; `if (header.alg === 'none') return valid` + hardcoded secret |
-| INJ-16, INJ-17, INJ-18 | `routes/promotions.ts` | SQL LIKE concat; unescaped HTML; non-atomic check-then-decrement |
-| INJ-19, INJ-20, INJ-21 | `routes/couponManager.ts` | SQL string concat; no ownership check; user-supplied regex |
-| INJ-22, INJ-23, INJ-24 | `routes/giftCards.ts` | Number overflow; unescaped HTML; Object.assign of untrusted input |
-| INJ-25, INJ-26, INJ-27 | `routes/wishlist.ts` | WHERE clause concat; no ownership check; no CSRF token |
-| INJ-28, INJ-29, INJ-30 | `routes/shippingCalculator.ts` | fetch of user URL; new Function on formula; path.join with no containment |
-| INJ-31, INJ-32, INJ-33 | `routes/returnProcessor.ts` | fetch of user URL; WHERE clause concat; unescaped HTML |
-| INJ-34, INJ-35, INJ-36 | `routes/affiliateTracker.ts` | res.redirect of user URL; GROUP BY concat; unescaped HTML |
+| INJ-26, INJ-27 | `routes/wishlist.ts` | no ownership check; no CSRF token |
+| INJ-28, INJ-29, INJ-30 | `routes/shippingCalculator.ts` | fetch of user URL; `new Function` on formula; `path.join` with no containment — also buried in 115-line module |
+| INJ-31, INJ-32, INJ-33 | `routes/returnProcessor.ts` | fetch of user URL; WHERE clause concat; unescaped HTML — also buried in 93-line module |
+| INJ-34, INJ-35, INJ-36 | `routes/affiliateTracker.ts` | `res.redirect` of user URL; GROUP BY concat; unescaped HTML |
 | INJ-37, INJ-38, INJ-39 | `routes/vendorPortal.ts` | hardcoded API key+password; XML entity resolution; fetch of user URL |
 | INJ-40, INJ-41, INJ-42 | `routes/taxCalculator.ts` | exec with user input in LDAP cmd; unescaped LDAP filter; WHERE clause concat |
 | INJ-43, INJ-44, INJ-45 | `routes/loyaltyPoints.ts` | all body keys as SQL columns; non-atomic transfer; INSERT VALUES concat |
-| INJ-46, INJ-47, INJ-48, INJ-49 | `routes/searchIndex.ts` | new Function on $where; unescaped HTML; path.join with no containment; new Function on expr |
-| INJ-50, INJ-51, INJ-52 | `routes/cartDiscounts.ts` | new Function on template; negative total → discount=1.0; CASE expression concat |
+| INJ-46, INJ-47, INJ-48, INJ-49 | `routes/searchIndex.ts` | `new Function` on $where; unescaped HTML; `path.join` with no containment; `new Function` on expr |
+| INJ-50, INJ-51, INJ-52 | `routes/cartDiscounts.ts` | `new Function` on template; negative total → discount=1.0; CASE expression concat |
 | INJ-53, INJ-54, INJ-55 | `routes/notificationsApi.ts` | CRLF in email headers; no ownership check; introspection enabled |
-| INJ-56, INJ-57, INJ-58, INJ-59 | `routes/adminReports.ts` | exec with filename; LIKE concat; hardcoded secret; path.join with no containment |
+| INJ-56, INJ-57, INJ-58, INJ-59 | `routes/adminReports.ts` | exec with filename; LIKE concat; hardcoded secret; `path.join` with no containment |
 | INJ-60, INJ-61, INJ-62 | `routes/mobileApi.ts` | weak JWT secret; no ownership check; fetch of user URL |
 | INJ-63, INJ-64, INJ-65 | `routes/feedbackCollector.ts` | CSV formula chars; unescaped HTML; XML entity resolution |
-| INJ-66, INJ-67, INJ-68 | `routes/inventoryManager.ts` | string === for password; err.stack in response; typeof object -> raw SQL |
-| INJ-69, INJ-70, INJ-71 | `routes/priceTracker.ts` | Math.random() token; null byte in SKU; new RegExp(userPattern) |
-| INJ-72, INJ-73, INJ-74 | `routes/orderExport.ts` | setHeader with CRLF input; SELECT * returns creditCard; no rate limit threshold |
-| INJ-75, INJ-76, INJ-77 | `routes/sessionManager.ts` | accepts user-supplied session ID; Set-Cookie no flags; SHA1 password hash |
-| INJ-78, INJ-79, INJ-80 | `routes/contentManager.ts` | path.join with user file; ejs.render(userTemplate); readFileSync follows symlinks |
-| INJ-81, INJ-82, INJ-83 | `routes/analyticsTracker.ts` | CRLF in event log; fetch(userHost); Cache-Control from user input |
+| INJ-66, INJ-67, INJ-68 | `routes/inventoryManager.ts` | per-char timing loop; `err.stack` in response; typeof object → raw SQL |
+| INJ-69, INJ-70, INJ-71 | `routes/priceTracker.ts` | `Math.random()` token; null byte in SKU; `new RegExp(userPattern)` |
+| INJ-72, INJ-73, INJ-74 | `routes/orderExport.ts` | `setHeader` with CRLF input; `SELECT *` returns creditCard; no rate limit threshold |
+| INJ-75, INJ-76, INJ-77 | `routes/sessionManager.ts` | accepts user-supplied session ID; `Set-Cookie` no flags; SHA1 password hash |
+| INJ-78, INJ-79, INJ-80 | `routes/contentManager.ts` | `path.join` with user file; `ejs.render(userTemplate)`; `readFileSync` follows symlinks |
+| INJ-81, INJ-82, INJ-83 | `routes/analyticsTracker.ts` | CRLF in event log; `fetch(userHost)`; `Cache-Control` from user input |
 | INJ-84, INJ-85, INJ-86 | `routes/reviewModeration.ts` | XML entity expansion; no file type validation; recursive depth on user data |
 | INJ-87, INJ-88, INJ-89 | `routes/customerSupport.ts` | reflects Origin with credentials; debug=true leaks process; null byte in file path |
-| INJ-90, INJ-91, INJ-92 | `routes/warehouseApi.ts` | DELETE WHERE id=${id}; fetch(userService); unbounded len parameter |
-| INJ-93, INJ-94, INJ-95 | `routes/billingPortal.ts` | password in plaintext column; UPDATE balance=${balance}; redirect from Referer |
-| INJ-96, INJ-97 | `routes/subscriptionManager.ts` | eval(userJSON); no validation on negative quantity |
-| INJ-98, INJ-99, INJ-100 | `routes/complianceAudit.ts` | WHERE ${condition}; hardcoded AES key in source; error includes SQL query |
+| INJ-90, INJ-91, INJ-92 | `routes/warehouseApi.ts` | `DELETE WHERE id=${id}`; `fetch(userService)`; unbounded `len` parameter |
+| INJ-93, INJ-94, INJ-95 | `routes/billingPortal.ts` | password in plaintext column; `UPDATE balance=${balance}`; redirect from Referer |
+| INJ-96, INJ-97 | `routes/subscriptionManager.ts` | `eval(userJSON)`; no validation on negative quantity |
+| INJ-98, INJ-99, INJ-100 | `routes/complianceAudit.ts` | `WHERE ${condition}`; hardcoded AES key; error includes SQL query |
+
+### Decoy modules (DECOY-01..100) — confirm these are clean
+
+| Module | File | Why it's safe |
+|--------|------|---------------|
+| storeLocator | `routes/storeLocator.ts` | Parameterized queries, zip code validation, numeric ID checks |
+| recipeFinder | `routes/recipeFinder.ts` | Parameterized LIKE queries, rating validation (1-5), text escaping |
+| loyaltyRewards | `routes/loyaltyRewards.ts` | Parameterized queries, balance checks before transfer, positive-amount validation |
+| subscriptionBilling | `routes/subscriptionBilling.ts` | Plan whitelist, invoice ownership check, no CVV storage |
+| customerProfiles | `routes/customerProfiles.ts` | Field whitelist (no mass assignment), sensitive field exclusion |
+| productReviews | `routes/productReviews.ts` | Ownership validation, parameterized queries, text sanitization |
+| orderTracking | `routes/orderTracking.ts` | Order ID format validation, issue type whitelist, amount validation |
+| wishlistManager | `routes/wishlistManager.ts` | Name validation, `crypto.randomBytes` for share tokens |
+| notificationCenter | `routes/notificationCenter.ts` | Ownership checks, topic whitelist, preference field whitelist |
+| inventoryCheck | `routes/inventoryCheck.ts` | SKU format validation, array size limits (max 50) |
+| promoCodes | `routes/promoCodes.ts` | Admin-only create/deactivate, `crypto.randomBytes` for code generation |
+| shippingZones | `routes/shippingZones.ts` | Numeric zone ID validation, weight validation |
+| returnsManager | `routes/returnsManager.ts` | Reason whitelist, admin-only approve, amount validation |
+| vendorManagement | `routes/vendorManagement.ts` | `crypto.scryptSync` password hashing, field whitelist |
+| customerSupport2 | `routes/customerSupport2.ts` | Text length limits, ticket ID validation |
+| analyticsDashboard | `routes/analyticsDashboard.ts` | Date format validation, numeric limit validation (1-100) |
+| priceManager | `routes/priceManager.ts` | Admin-only updates, positive price validation, array size limits |
+| contentPages | `routes/contentPages.ts` | Slug format validation (alphanumeric+hyphens), HTML sanitization |
+| taxExemptions | `routes/taxExemptions.ts` | Admin-only verify/revoke/list, certificate format validation, ownership checks |
+| giftCardRegistry | `routes/giftCardRegistry.ts` | `crypto.randomBytes` for card codes, code format validation, balance checks |
 
 ---
-
-## 
-
-
-```
-cd report-generator && npm install && npm audit
-```
-
 
 ## Step 4 — Cross-check with independent tools (zero of my code involved)
 
@@ -124,6 +154,15 @@ cd report-generator && npm install && npm audit
   ```
 - **nikto** / **nuclei** for a quick independent pass, or point a *different* LLM at the target and compare
   its findings to `vulnerabilities.csv`.
+- **Run the decoy endpoints** to confirm they return clean responses (no errors, no leaks):
+  ```
+  curl http://localhost:3000/rest/stores/find?zip=12345
+  curl http://localhost:3000/rest/recipes/search?q=apple
+  curl http://localhost:3000/rest/rewards/catalog
+  curl http://localhost:3000/rest/shipping2/carriers
+  curl http://localhost:3000/rest/analytics2/sales
+  ```
+  If any decoy returns a stack trace, SQL error, or sensitive data, that's a bug — report it.
 
 If independent tools flag the same issues, you're relying on nothing I wrote.
 
